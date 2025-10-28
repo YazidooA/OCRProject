@@ -1,13 +1,15 @@
 #include <structure_detection.h>
 
 // Fonction pour compter les transitions blanc->noir dans une ligne
-int count_transitions(unsigned char* line, int length, int threshold) {
+int count_transitions(unsigned char* line, int length, int threshold) 
+{
     int transitions = 0;
-    int prev_state = line[0] > threshold ? 1 : 0;
-    
-    for (int i = 1; i < length; i++) {
-        int curr_state = line[i] > threshold ? 1 : 0;
-        if (curr_state != prev_state) {
+    int prev_state = line[0] > threshold;    
+    for (int i = 1; i < length; i++) 
+    {
+        int curr_state = line[i] > threshold;
+        if (curr_state != prev_state) 
+        {
             transitions++;
             prev_state = curr_state;
         }
@@ -17,16 +19,16 @@ int count_transitions(unsigned char* line, int length, int threshold) {
 }
 
 // Calcule la projection horizontale (somme des pixels noirs par ligne)
-int* calculate_horizontal_projection(Image* img) {
+int* calculate_horizontal_projection(Image* img) 
+{
     int* projection = (int*)calloc(img->height, sizeof(int));
-    
-    for (int y = 0; y < img->height; y++) {
-        for (int x = 0; x < img->width; x++) {
+    for (int y = 0; y < img->height; y++) 
+    {
+        for (int x = 0; x < img->width; x++)
+        {
             int pixel = img->data[y * img->width + x];
             // Compte les pixels noirs (on suppose une image binaire)
-            if (pixel < 128) {
-                projection[y]++;
-            }
+            if (pixel < 128) projection[y]++;
         }
     }
     
@@ -34,15 +36,16 @@ int* calculate_horizontal_projection(Image* img) {
 }
 
 // Calcule la projection verticale (somme des pixels noirs par colonne)
-int* calculate_vertical_projection(Image* img) {
+int* calculate_vertical_projection(Image* img) 
+{
     int* projection = (int*)calloc(img->width, sizeof(int));
     
-    for (int x = 0; x < img->width; x++) {
-        for (int y = 0; y < img->height; y++) {
+    for (int x = 0; x < img->width; x++) 
+    {
+        for (int y = 0; y < img->height; y++) 
+        {
             int pixel = img->data[y * img->width + x];
-            if (pixel < 128) {
-                projection[x]++;
-            }
+            if (pixel < 128) projection[x]++;
         }
     }
     
@@ -50,7 +53,8 @@ int* calculate_vertical_projection(Image* img) {
 }
 
 // Détecte la position de la grille de mots cachés
-Rectangle detect_grid_area(Image* img) {
+Rectangle detect_grid_area(Image* img)
+{
     Rectangle grid = {0, 0, 0, 0};
     
     // Calcul des projections
@@ -200,13 +204,17 @@ Rectangle* detect_grid_cells(Image* img, Rectangle grid_area, int* cell_count) {
     int* v_proj = (int*)calloc(grid_area.width, sizeof(int));
     
     // Calcul des projections dans la zone de la grille
-    for (int y = 0; y < grid_area.height; y++) {
-        for (int x = 0; x < grid_area.width; x++) {
+    for (int y = 0; y < grid_area.height; y++) 
+    {
+        for (int x = 0; x < grid_area.width; x++) 
+        {
             int img_x = grid_area.x + x;
             int img_y = grid_area.y + y;
-            if (img_x < img->width && img_y < img->height) {
+            if (img_x < img->width && img_y < img->height) 
+            {
                 int pixel = img->data[img_y * img->width + img_x];
-                if (pixel < 128) {
+                if (pixel < 128) 
+                {
                     h_proj[y]++;
                     v_proj[x]++;
                 }
@@ -295,24 +303,23 @@ int is_inside_rectangle(int x, int y, Rectangle rect) {
 }
 
 // Dessine un rectangle sur l'image
-void draw_rectangle(Image* img, Rectangle rect, unsigned char color) {
+void draw_rectangle(Image* img, Rectangle rect, unsigned char color) 
+{
     // Bord supérieur et inférieur
-    for (int x = rect.x; x < rect.x + rect.width; x++) {
-        if (x >= 0 && x < img->width) {
-            if (rect.y >= 0 && rect.y < img->height)
-                img->data[rect.y * img->width + x] = color;
-            if (rect.y + rect.height >= 0 && rect.y + rect.height < img->height)
-                img->data[(rect.y + rect.height) * img->width + x] = color;
+    for (int x = rect.x; x < rect.x + rect.width; x++) 
+    {
+        if (x >= 0 && x < img->width) 
+        {
+            if (rect.y >= 0 && rect.y < img->height) img->data[rect.y * img->width + x] = color;
+            if (rect.y + rect.height >= 0 && rect.y + rect.height < img->height) img->data[(rect.y + rect.height) * img->width + x] = color;
         }
     }
     
     // Bord gauche et droit
     for (int y = rect.y; y < rect.y + rect.height; y++) {
         if (y >= 0 && y < img->height) {
-            if (rect.x >= 0 && rect.x < img->width)
-                img->data[y * img->width + rect.x] = color;
-            if (rect.x + rect.width >= 0 && rect.x + rect.width < img->width)
-                img->data[y * img->width + rect.x + rect.width] = color;
+            if (rect.x >= 0 && rect.x < img->width) img->data[y * img->width + rect.x] = color;
+            if (rect.x + rect.width >= 0 && rect.x + rect.width < img->width) img->data[y * img->width + rect.x + rect.width] = color;
         }
     }
 }

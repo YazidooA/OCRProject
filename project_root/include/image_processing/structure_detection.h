@@ -1,3 +1,4 @@
+// structure_detection.h
 #ifndef STRUCTURE_DETECTION_H
 #define STRUCTURE_DETECTION_H
 
