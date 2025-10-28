@@ -1,19 +1,51 @@
 #ifndef STRUCTURE_DETECTION_H
 #define STRUCTURE_DETECTION_H
 
-#include "../common.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
 
-// Détection de structures
-Rectangle detect_grid_area(const Image* img);
-Rectangle detect_word_list_area(const Image* img);
-Rectangle* detect_grid_cells(const Image* img, const Rectangle* grid_area, int* cell_count);
+// Structure pour représenter une image
+typedef struct {
+    unsigned char* data;
+    int width;
+    int height;
+    int channels;
+} Image;
 
-// Analyse de lignes et colonnes
-int* detect_horizontal_lines(const Image* img, int* line_count);
-int* detect_vertical_lines(const Image* img, int* line_count);
+// Structure pour représenter un rectangle
+typedef struct {
+    int x;
+    int y;
+    int width;
+    int height;
+} Rectangle;
 
-// Validation de structures
-bool validate_grid_structure(const Rectangle* cells, int cell_count, int expected_rows, int expected_cols);
-bool is_valid_cell(const Rectangle* cell, int min_width, int min_height);
+// Structure pour représenter une position
+typedef struct {
+    int x;
+    int y;
+} Position;
 
-#endif // STRUCTURE_DETECTION_H
+// Structure pour les résultats de détection
+typedef struct {
+    Position start;
+    Position end;
+    int found;
+    char word[50];
+} SearchResult;
+
+// Fonctions de détection
+Rectangle detect_grid_area(Image* img);
+Rectangle detect_word_list_area(Image* img);
+Rectangle* detect_grid_cells(Image* img, Rectangle grid_area, int* cell_count);
+void save_solved_grid(Image* img, SearchResult* results, int result_count, const char* output_path);
+
+// Fonctions utilitaires
+int count_transitions(unsigned char* line, int length, int threshold);
+int is_inside_rectangle(int x, int y, Rectangle rect);
+void draw_rectangle(Image* img, Rectangle rect, unsigned char color);
+void draw_line(Image* img, Position start, Position end, unsigned char color, int thickness);
+
+#endif
