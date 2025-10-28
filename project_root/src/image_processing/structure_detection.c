@@ -75,10 +75,9 @@ Rectangle detect_grid_area(Image* img)
         if (h_proj[y] > h_threshold) {
             // Vérifie qu'il y a une densité constante (caractéristique d'une grille)
             int consistent_lines = 0;
-            for (int i = y; i < y + 20 && i < img->height; i++) {
-                if (h_proj[i] > h_threshold * 0.5) consistent_lines++;
-            }
-            if (consistent_lines > 15) {
+            for (int i = y; i < y + 20 && i < img->height; i++) if (h_proj[i] > h_threshold * 0.5) consistent_lines++;
+            if (consistent_lines > 15) 
+            {
                 top = y;
                 break;
             }
