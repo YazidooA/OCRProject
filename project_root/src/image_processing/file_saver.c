@@ -1,58 +1,64 @@
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
-#include <stdbool.h>
 #include <stdlib.h>
-#include <time.h>
-#include <textio.h>
+#include <myvim.h>
 
 typedef char bstring[50];
-typedef char string[];
-bstring* get_text()
-{
-    bstring* text = malloc(sizeof(bstring)*50);
-    for (int i = 0; i<50 ;i++)
-    {
-        fgets(text[i], 50, stdin);
-        text[i][strcspn(text[i], "\n")] = 0;
-        if (strcmp(text[i],"stop")==0) 
-        {
-            text[i][0] = '\0';
-            break;
-        }
-    }
-    return text;
-}
 
-void give_text(bstring* text, string namefile) 
+// Fonction pour écrire le texte dans un fichier
+void give_text(bstring* text, char* namefile) 
 {
-
     FILE *pFile = fopen(namefile, "w");
-    if(pFile == NULL)
+    if (pFile == NULL)
     {
-        printf("Error opening file\n");
+        printf("Erreur lors de l'ouverture du fichier\n");
         return;
     }
-    for(int i=0; i<50; i++) fprintf(pFile, "%s\n", text[i]);
-    printf("File was written successfully!\n");
+    
+    for (int i = 0; i < 50; i++) 
+    {
+        if (text[i][0] == '\0') break; // Arrêter si ligne vide
+        fprintf(pFile, "%s\n", text[i]);
+    }
+    
+    printf("Fichier écrit avec succès!\n");
     fclose(pFile);
-    return;
 }
 
-int myvim(int argc, char *argv[]) 
+// Fonction myvim : prend le nom du fichier et un array de strings
+int myvim(char* file, char* text_array[]) 
 {
-    if (argc < 2) {
-        printf("Usage: %s <fichier>\n", argv[0]);
-        return 1;
+    // Convertir char*[] en bstring* pour compatibilité avec give_text
+    bstring* text = malloc(sizeof(bstring) * 50);
+    if (text == NULL) {
+        printf("Erreur d'allocation mémoire\n");
+        return -1;
     }
-    bstring* text= get_text();
-    if (!text) {
-        printf("Memory allocation failed!\n");
-        return 1;
+    
+    // Initialiser toutes les strings à vide
+    for (int i = 0; i < 50; i++) {
+        text[i][0] = '\0';
     }
-    give_text(text,argv[1]);
-    for(int i=0;i<50;i++) printf("%s\n",text[i]);
+    
+    // Copier les strings du tableau d'entrée
+    int i = 0;
+    while (text_array[i] != NULL && i < 50) 
+    {
+        strncpy(text[i], text_array[i], 49);
+        text[i][49] = '\0'; // Assurer la terminaison
+        i++;
+    }
+    
+    // Écrire dans le fichier
+    give_text(text, file);
+    
+    // Afficher le contenu
+    for (int j = 0; j < i; j++) {
+        printf("%s\n", text[j]);
+    }
+    
+    // Libérer la mémoire
     free(text);
-    text=NULL;
+    
     return 0;
 }
