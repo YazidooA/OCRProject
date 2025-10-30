@@ -1,8 +1,4 @@
 #include "file_saver.h"
-#include "letter_extractor.h"
-#include "draw_outline.h"
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_image.h>
 
 // Simple text file writer
 void write_text_file(const char* filename, char** lines, int line_count) {
@@ -54,9 +50,20 @@ void free_text_lines(char** lines, int line_count) {
     }
 }
 
-// Convert LetterGrid recognized letters to matrix string format
-char** letter_grid_to_matrix(LetterGrid* grid, char* recognized_letters) {
-    if (!grid || !recognized_letters) return NULL;
+// Prepare letter image for neural network (normalize to [0-1] or binary)
+static void prepare_letter_for_nn(Letter* letter, float* input_buffer) {
+    // Le RDN attend des pixels en float [0-1]
+    for (int i = 0; i < INPUT_SIZE; i++) {
+        // Normaliser de [0-255] vers [0-1]
+        input_buffer[i] = letter->data[i] / 255.0f;
+    }
+}
+
+// Convert LetterGrid to matrix using NEURAL NETWORK recognition
+char** letter_grid_to_matrix_with_nn(LetterGrid* grid, Network* net) {
+    if (!grid || !net) return NULL;
+    
+    printf("\n=== Reconnaissance des lettres avec RDN ===\n");
     
     char** matrix = (char**)malloc(grid->rows * sizeof(char*));
     for (int i = 0; i < grid->rows; i++) {
@@ -64,14 +71,34 @@ char** letter_grid_to_matrix(LetterGrid* grid, char* recognized_letters) {
         matrix[i][grid->cols] = '\0';
     }
     
+    float input_buffer[INPUT_SIZE];  // Buffer pour normaliser l'entrée
+    
+    // Reconnaître chaque lettre avec le RDN
     for (int i = 0; i < grid->count; i++) {
         int row = grid->letters[i].grid_row;
         int col = grid->letters[i].grid_col;
         
         if (row >= 0 && row < grid->rows && col >= 0 && col < grid->cols) {
-            matrix[row][col] = recognized_letters[i];
+            // Préparer l'image pour le réseau
+            prepare_letter_for_nn(&grid->letters[i], input_buffer);
+            
+            // Prédiction: retourne 0-25 pour A-Z
+            int prediction = predict(net, input_buffer);
+            
+            // Convertir en caractère
+            char recognized_letter = 'A' + prediction;
+            matrix[row][col] = recognized_letter;
+            
+            // Afficher progression tous les 50 caractères
+            if ((i + 1) % 50 == 0 || i == grid->count - 1) {
+                printf("  Progression: %d/%d lettres reconnues\r", 
+                       i + 1, grid->count);
+                fflush(stdout);
+            }
         }
     }
+    
+    printf("\n✓ Reconnaissance terminée: %d lettres\n", grid->count);
     
     return matrix;
 }
@@ -84,8 +111,10 @@ void save_grid_matrix(const char* filename, char** matrix, int rows, int cols) {
         return;
     }
     
+    // Write dimensions first (format expected by solver.c)
     fprintf(fp, "%d %d\n", rows, cols);
     
+    // Write grid matrix
     for (int r = 0; r < rows; r++) {
         for (int c = 0; c < cols; c++) {
             fprintf(fp, "%c", matrix[r][c]);
@@ -108,44 +137,7 @@ void free_matrix(char** matrix, int rows) {
     }
 }
 
-// Draw line using Bresenham (kept for compatibility, but could use draw_outline)
-static void draw_line_bresenham(Image* img, Position start, Position end, 
-                                unsigned char color, int thickness) {
-    int dx = abs(end.x - start.x);
-    int dy = abs(end.y - start.y);
-    int sx = start.x < end.x ? 1 : -1;
-    int sy = start.y < end.y ? 1 : -1;
-    int err = dx - dy;
-    
-    int x = start.x;
-    int y = start.y;
-    
-    while (1) {
-        for (int ty = -thickness/2; ty <= thickness/2; ty++) {
-            for (int tx = -thickness/2; tx <= thickness/2; tx++) {
-                int px = x + tx;
-                int py = y + ty;
-                if (px >= 0 && px < img->width && py >= 0 && py < img->height) {
-                    img->data[py * img->width + px] = color;
-                }
-            }
-        }
-        
-        if (x == end.x && y == end.y) break;
-        
-        int e2 = 2 * err;
-        if (e2 > -dy) {
-            err -= dy;
-            x += sx;
-        }
-        if (e2 < dx) {
-            err += dx;
-            y += sy;
-        }
-    }
-}
-
-// Save solved grid with highlighted words (old version - kept for compatibility)
+// Save solved grid with highlighted words
 void save_solved_grid(Image* img, SearchResult* results, int result_count, 
                      const char* output_path) {
     if (!img || !img->data || !results || !output_path) {
@@ -153,6 +145,7 @@ void save_solved_grid(Image* img, SearchResult* results, int result_count,
         return;
     }
 
+    // Create output image copy
     Image* output = (Image*)malloc(sizeof(Image));
     if (!output) {
         fprintf(stderr, "Erreur: allocation mémoire\n");
@@ -172,14 +165,18 @@ void save_solved_grid(Image* img, SearchResult* results, int result_count,
     
     memcpy(output->data, img->data, img->width * img->height * img->channels);
     
+    // Highlight parameters
     unsigned char highlight_color = 200;
     int line_thickness = 3;
     
+    // Convert results to text format
     int line_count;
     char** text_lines = results_to_text_lines(results, result_count, &line_count);
     
+    // Draw each found word
     for (int i = 0; i < result_count; i++) {
         if (results[i].found) {
+            // Validate coordinates
             if (results[i].start.x < 0 || results[i].start.x >= output->width ||
                 results[i].start.y < 0 || results[i].start.y >= output->height ||
                 results[i].end.x < 0 || results[i].end.x >= output->width ||
@@ -194,11 +191,12 @@ void save_solved_grid(Image* img, SearchResult* results, int result_count,
                    results[i].start.x, results[i].start.y,
                    results[i].end.x, results[i].end.y);
             
-            draw_line_bresenham(output, results[i].start, results[i].end, 
-                               highlight_color, line_thickness);
+            draw_line(output, results[i].start, results[i].end, 
+                     highlight_color, line_thickness);
         }
     }
 
+    // Save image (PGM format)
     FILE* fp = fopen(output_path, "wb");
     if (fp) {
         fprintf(fp, "P5\n%d %d\n255\n", output->width, output->height);
@@ -209,6 +207,7 @@ void save_solved_grid(Image* img, SearchResult* results, int result_count,
         fprintf(stderr, "Erreur: impossible de sauvegarder l'image\n");
     }
     
+    // Save text results
     char text_path[512];
     strncpy(text_path, output_path, 500);
     char* ext = strrchr(text_path, '.');
@@ -217,174 +216,50 @@ void save_solved_grid(Image* img, SearchResult* results, int result_count,
     
     write_text_file(text_path, text_lines, line_count);
     
+    // Cleanup
     free_text_lines(text_lines, line_count);
     free(output->data);
     free(output);
 }
 
-// Save recognized grid for solver.c input
-void save_recognized_grid_for_solver(LetterGrid* grid, char* recognized_letters, 
-                                     const char* output_path) {
-    if (!grid || !recognized_letters || !output_path) {
-        fprintf(stderr, "Erreur: paramètres invalides pour save_recognized_grid\n");
+// NOUVELLE FONCTION PRINCIPALE: Save recognized grid using NEURAL NETWORK
+void save_recognized_grid_with_nn(LetterGrid* grid, Network* net, 
+                                  const char* output_path) {
+    if (!grid || !net || !output_path) {
+        fprintf(stderr, "Erreur: paramètres invalides\n");
         return;
     }
     
-    char** matrix = letter_grid_to_matrix(grid, recognized_letters);
+    printf("\n╔════════════════════════════════════════╗\n");
+    printf("║  RECONNAISSANCE PAR RÉSEAU DE NEURONES ║\n");
+    printf("╚════════════════════════════════════════╝\n");
+    
+    // Utiliser le RDN pour reconnaître les lettres
+    char** matrix = letter_grid_to_matrix_with_nn(grid, net);
     if (!matrix) {
         fprintf(stderr, "Erreur: conversion grille impossible\n");
         return;
     }
     
+    // Sauvegarder au format solver.c
     save_grid_matrix(output_path, matrix, grid->rows, grid->cols);
     
-    printf("\n=== Grille reconnue (RDN) ===\n");
-    for (int r = 0; r < grid->rows; r++) {
-        for (int c = 0; c < grid->cols; c++) {
+    // Afficher un aperçu de la grille
+    printf("\n=== Grille reconnue (aperçu) ===\n");
+    int preview_rows = (grid->rows > 10) ? 10 : grid->rows;
+    int preview_cols = (grid->cols > 20) ? 20 : grid->cols;
+    
+    for (int r = 0; r < preview_rows; r++) {
+        for (int c = 0; c < preview_cols; c++) {
             printf("%c ", matrix[r][c]);
         }
+        if (grid->cols > preview_cols) printf("...");
         printf("\n");
     }
-    printf("=============================\n\n");
+    if (grid->rows > preview_rows) {
+        printf("...\n");
+    }
+    printf("================================\n\n");
     
     free_matrix(matrix, grid->rows);
-}
-
-// NEW: Complete RDN output with SDL-based drawing (uses draw_outline.c)
-RDNOutput save_complete_rdn_output(Image* img, SearchResult* results, 
-                                    int result_count, const char* base_output_path) {
-    RDNOutput output = {0};
-    
-    if (!img || !img->data || !results || !base_output_path) {
-        fprintf(stderr, "Erreur: paramètres invalides pour RDN output\n");
-        return output;
-    }
-    
-    // Generate output paths
-    snprintf(output.image_path, sizeof(output.image_path), "%s_solved.png", base_output_path);
-    snprintf(output.text_path, sizeof(output.text_path), "%s_results.txt", base_output_path);
-    
-    // Count found words
-    output.words_total = result_count;
-    output.words_found = 0;
-    for (int i = 0; i < result_count; i++) {
-        if (results[i].found) output.words_found++;
-    }
-    output.success_rate = result_count > 0 ? 
-        (100.0f * output.words_found / output.words_total) : 0.0f;
-    
-    // === Save detailed text file ===
-    FILE* txt = fopen(output.text_path, "w");
-    if (txt) {
-        fprintf(txt, "=== RDN - Résultats de la recherche ===\n");
-        fprintf(txt, "Mots trouvés: %d/%d (%.1f%%)\n\n", 
-                output.words_found, output.words_total, output.success_rate);
-        
-        fprintf(txt, "=== Mots trouvés ===\n");
-        for (int i = 0; i < result_count; i++) {
-            if (results[i].found) {
-                fprintf(txt, "✓ %s: (%d,%d) -> (%d,%d)\n",
-                       results[i].word,
-                       results[i].start.x, results[i].start.y,
-                       results[i].end.x, results[i].end.y);
-            }
-        }
-        
-        fprintf(txt, "\n=== Mots non trouvés ===\n");
-        int not_found = 0;
-        for (int i = 0; i < result_count; i++) {
-            if (!results[i].found) {
-                fprintf(txt, "✗ %s\n", results[i].word);
-                not_found++;
-            }
-        }
-        if (not_found == 0) {
-            fprintf(txt, "(aucun)\n");
-        }
-        
-        fclose(txt);
-        printf("✓ Résultats texte sauvegardés: %s\n", output.text_path);
-    }
-    
-    // === Save image with SDL (using draw_outline for better quality) ===
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        fprintf(stderr, "Erreur SDL_Init: %s\n", SDL_GetError());
-        return output;
-    }
-    
-    if (!(IMG_Init(IMG_INIT_PNG) & IMG_INIT_PNG)) {
-        fprintf(stderr, "Erreur IMG_Init: %s\n", IMG_GetError());
-        SDL_Quit();
-        return output;
-    }
-    
-    // Convert grayscale Image to SDL_Surface
-    SDL_Surface* surface = SDL_CreateRGBSurface(0, img->width, img->height, 32,
-                                                0xFF000000, 0x00FF0000, 
-                                                0x0000FF00, 0x000000FF);
-    if (!surface) {
-        fprintf(stderr, "Erreur création surface: %s\n", SDL_GetError());
-        IMG_Quit();
-        SDL_Quit();
-        return output;
-    }
-    
-    // Copy grayscale data to RGB surface
-    uint32_t* pixels = (uint32_t*)surface->pixels;
-    for (int y = 0; y < img->height; y++) {
-        for (int x = 0; x < img->width; x++) {
-            unsigned char gray = img->data[y * img->width + x];
-            pixels[y * img->width + x] = (gray << 16) | (gray << 8) | gray | 0xFF000000;
-        }
-    }
-    
-    // Create renderer
-    SDL_Renderer* renderer = SDL_CreateSoftwareRenderer(surface);
-    if (!renderer) {
-        fprintf(stderr, "Erreur création renderer: %s\n", SDL_GetError());
-        SDL_FreeSurface(surface);
-        IMG_Quit();
-        SDL_Quit();
-        return output;
-    }
-    
-    // Draw outlines for found words (using draw_outline.c)
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Red
-    for (int i = 0; i < result_count; i++) {
-        if (results[i].found) {
-            printf("Dessin outline: '%s' de (%d,%d) à (%d,%d)\n",
-                   results[i].word,
-                   results[i].start.x, results[i].start.y,
-                   results[i].end.x, results[i].end.y);
-            
-            draw_outline(renderer,
-                        results[i].start.x, results[i].start.y,
-                        results[i].end.x, results[i].end.y,
-                        15,  // width
-                        3);  // stroke
-        }
-    }
-    
-    // Save PNG
-    if (IMG_SavePNG(surface, output.image_path) != 0) {
-        fprintf(stderr, "Erreur sauvegarde PNG: %s\n", IMG_GetError());
-    } else {
-        printf("✓ Image RDN sauvegardée: %s\n", output.image_path);
-    }
-    
-    // Cleanup
-    SDL_DestroyRenderer(renderer);
-    SDL_FreeSurface(surface);
-    IMG_Quit();
-    SDL_Quit();
-    
-    // Summary
-    printf("\n=== RDN OUTPUT SUMMARY ===\n");
-    printf("Image: %s\n", output.image_path);
-    printf("Texte: %s\n", output.text_path);
-    printf("Taux de réussite: %.1f%% (%d/%d mots)\n", 
-           output.success_rate, output.words_found, output.words_total);
-    printf("==========================\n\n");
-    
-    return output;
 }
