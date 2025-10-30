@@ -330,28 +330,33 @@ int event_handler(struct image_data *data, SDL_Renderer *renderer, SDL_Texture *
                                 break;
                         case SDL_KEYDOWN:
                                 switch(event.key.keysym.sym){
-                                        case SDLK_c:
+                                        case SDLK_c: // Reload Image from disk
                                                 load_in_surface(data, surface);
                                                 actualize_rendering(renderer, texture, *surface);
                                                 break;
-                                        case SDLK_r:
+                                        case SDLK_r: // Rotate Surface properly
                                                 double value = auto_deskew_correction(*surface);
                                                 *surface = rotate(*surface, value);
+                                                save_surface(data, *surface, "rotation");
                                                 actualize_rendering(renderer, texture, *surface);
                                                 break;
-                                        case SDLK_g:
+                                        case SDLK_g: // Apply grayscaling to surface
                                                 convert_to_grayscale(*surface);
                                                 save_surface(data, *surface, "grayscale");
                                                 actualize_rendering(renderer, texture, *surface);
                                                 break;
-                                        case SDLK_h:
+                                        case SDLK_h: // apply otsu thresholding to surface
                                                 apply_otsu_thresholding(*surface);
                                                 save_surface(data, *surface, "otsu_thresholding");
                                                 actualize_rendering(renderer, texture, *surface);
                                                 break;
-                                        case SDLK_j:
+                                        case SDLK_j: // apply noise removal to surface
                                                 apply_noise_removal(*surface, 2);
                                                 save_surface(data, *surface, "noise_removal");
+                                                actualize_rendering(renderer, texture, *surface);
+                                                break;
+                                        case SDLK_k: // Resolve and send to neuronal network
+                                                // TODO
                                                 actualize_rendering(renderer, texture, *surface);
                                                 break;
 
