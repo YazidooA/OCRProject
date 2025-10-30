@@ -48,14 +48,14 @@ Rectangle detect_grid_area(Image* img);
 Rectangle detect_word_list_area(Image* img);
 Rectangle* detect_grid_cells(Image* img, Rectangle grid_area, int* cell_count, int* rows, int* cols);
 
-// Utility functions
-void draw_rectangle(Image* img, Rectangle rect, unsigned char color);
-void draw_line(Image* img, Position start, Position end, unsigned char color, int thickness);
-
-// Projection functions
+// Projection functions (used internally)
 int* calculate_horizontal_projection(Image* img);
 int* calculate_vertical_projection(Image* img);
-int count_transitions(unsigned char* line, int length, int threshold);
+
+// Utility functions (kept minimal - use external drawing functions when possible)
 int is_inside_rectangle(int x, int y, Rectangle rect);
+
+// NOTE: draw_line() removed - use draw_outline() from draw_outline.c instead
+// NOTE: draw_rectangle() was never implemented
 
 #endif // STRUCTURE_DETECTION_H

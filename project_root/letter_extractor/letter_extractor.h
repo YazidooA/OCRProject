@@ -37,12 +37,11 @@ void get_bounding_box(Image* img, int* min_x, int* min_y, int* max_x, int* max_y
 Image* resize_image(Image* img, int new_width, int new_height);
 Image* extract_subimage(Image* img, Rectangle area);
 
-// Sauvegarde pour debugging
-void save_letter_grid(LetterGrid* grid, const char* output_dir);
-void save_letter(Letter* letter, const char* filename);
-
 // Libération mémoire
 void free_letter(Letter* letter);
 void free_letter_grid(LetterGrid* grid);
+
+// NOTE: save_letter_grid() et save_letter() ont été retirées
+// Utilisez digitalisation.c pour créer des datasets d'entraînement
 
 #endif // LETTER_EXTRACTION_H
