@@ -5,26 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* ========================================
-   PIPELINE COMPLET AVEC PRÉTRAITEMENT
-   ========================================
-   
-   Flux complet :
-   1. Ibrahim donne SDL_Surface
-   2. Prétraitement (grayscale + otsu + noise removal)
-   3. Extraction lettres -> CSV
-   4. IA externe traite CSV -> lettres
-   5. Écriture fichiers grille
-   6. Solver cherche mots
-   7. Conversion indices -> pixel
-   8. draw_outline entoure
-   9. Retour SDL_Surface annotée à Ibrahim
-*/
-
-/**
- * Prétraite une surface (grayscale + otsu + noise removal)
- * Crée une copie pour ne pas modifier l'original
- */
 SDL_Surface* preprocess_surface(SDL_Surface* original) {
     if (!original) return NULL;
     
@@ -271,12 +251,7 @@ void ibrahim_process_grid(
  * NOUVEAU event_handler avec touche 'k' intégrée
  * Remplace la fonction dans setup_image.c
  */
-int enhanced_event_handler(
-    struct image_data *data,
-    SDL_Renderer *renderer,
-    SDL_Texture *texture,
-    SDL_Surface **surface
-) {
+int enhanced_event_handler(struct image_data *data, SDL_Renderer *renderer, SDL_Texture *texture,SDL_Surface **surface) {
     SDL_Event event;
     
     int prs_s = 0;
@@ -338,18 +313,12 @@ int enhanced_event_handler(
         }
     }
     
-    if (prs_s && prs_ctrl) {
-        save_sketch(data, renderer, "output");
-    }
-    
+    if (prs_s && prs_ctrl) save_sketch(data, renderer, "output");
     return 1;
 }
 
-/* ========================================
-   MAIN DE TEST
-   ======================================== */
 
-#ifdef PIPELINE_TEST_MAIN
+
 int main(int argc, char** argv) {
     if (argc < 2) {
         fprintf(stderr, "Usage: %s <image.png>\n", argv[0]);
@@ -413,4 +382,3 @@ int main(int argc, char** argv) {
     
     return 0;
 }
-#endif
