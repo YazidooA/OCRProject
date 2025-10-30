@@ -76,28 +76,28 @@ char** read_grid_from_file(const char* filename, int* rows, int* cols) {
     return matrix;
 }
 
-int main(int argc, char *argv[]) {
-    if (argc != 2 && argc != 3) {
-        fprintf(stderr, "Usage: %s <file_grid> <word>\n", argv[0]);
-        return 1;
-    }
-
-    int rows, cols;
-    char **matrix = read_grid_from_file(argv[1], &rows, &cols);
-    if (!matrix) return 1;
-
-    char *word = argv[2];
-    for (size_t i = 0; word[i]; i++) word[i] = toupper(word[i]);
-
-    int out[4];
-    resolution(matrix, rows, cols, word, out);
-
-    if (out[0] == -1) {
-        printf("Not Found\n");
-    } else {
-        printf("(%d,%d)(%d,%d)\n", out[0], out[1], out[2], out[3]);
-    }
-
-    freeMatrix(matrix, rows);
-    return 0;
-}
+// int main(int argc, char *argv[]) {
+//     if (argc != 2 && argc != 3) {
+//         fprintf(stderr, "Usage: %s <file_grid> <word>\n", argv[0]);
+//         return 1;
+//     }
+// 
+//     int rows, cols;
+//     char **matrix = read_grid_from_file(argv[1], &rows, &cols);
+//     if (!matrix) return 1;
+// 
+//     char *word = argv[2];
+//     for (size_t i = 0; word[i]; i++) word[i] = toupper(word[i]);
+// 
+//     int out[4];
+//     resolution(matrix, rows, cols, word, out);
+// 
+//     if (out[0] == -1) {
+//         printf("Not Found\n");
+//     } else {
+//         printf("(%d,%d)(%d,%d)\n", out[0], out[1], out[2], out[3]);
+//     }
+// 
+//     freeMatrix(matrix, rows);
+//     return 0;
+// }

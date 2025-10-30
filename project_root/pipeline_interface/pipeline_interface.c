@@ -1,6 +1,7 @@
 #include "pipeline_interface.h"
 #include "image_cleaner.h"
-#include "setup_image.h"
+#include "../setup_image/setup_image.h"
+#include "../rotation/rotation.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -242,6 +243,7 @@ void ibrahim_process_grid(
     free(recognized_letters);
     free_pipeline_context(ctx);
 }
+
 
 /* ========================================
    MODIFICATION DU EVENT_HANDLER
