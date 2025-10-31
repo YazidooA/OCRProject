@@ -232,9 +232,7 @@ double auto_deskew_correction(SDL_Surface *surface) {
 
 
 
-
 /*
-
 int main(int argc, char *argv[]) {
     if (argc < 2 || argc > 3) {
         fprintf(stderr, "Usage: %s <image> [angle|auto]\n", argv[0]);
@@ -306,6 +304,4 @@ int main(int argc, char *argv[]) {
     SDL_Quit();
     return 0;
 }
-
-
 */
