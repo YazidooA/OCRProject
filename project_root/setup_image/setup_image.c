@@ -380,35 +380,35 @@ int event_handler(struct image_data *data, SDL_Renderer *renderer, SDL_Texture *
         return 1;
 }
 
-// int main(int argc, char *argv[]) {
-//     SDL_Window *window = NULL;
-//     SDL_Renderer *renderer = NULL;
-//     SDL_Texture *texture = NULL;
-//     SDL_Surface *surface = NULL;
-//     char* file = NULL;
-//     if (argc >1)
-//         file = argv[1];
-// 
-//     struct image_data data;
-//     fill_data(&data, file);
-//     print_image_data(&data);    
-// 
-//     initialize(&data, &window, &renderer, &texture, &surface, file);
-// 
-//     SDL_Color currColor = {255,0,0,255};
-//     float hue = 0.0f;
-//         int running = 1;
-//         int start_x = 0;
-//         int start_y = 0;
-// 
-//     while (running) {
-//         running = event_handler(&data, renderer, texture, &surface, &start_x, &start_y, &currColor, &hue);
-//         SDL_RenderCopy(renderer, texture, NULL, NULL);
-//         SDL_RenderPresent(renderer);
-//     }
-// 
-//     terminate(window, renderer, texture);
-//     return EXIT_SUCCESS;
-// }
+int main(int argc, char *argv[]) {
+     SDL_Window *window = NULL;
+     SDL_Renderer *renderer = NULL;
+     SDL_Texture *texture = NULL;
+     SDL_Surface *surface = NULL;
+     char* file = NULL;
+     if (argc >1)
+         file = argv[1];
+ 
+     struct image_data data;
+     fill_data(&data, file);
+     print_image_data(&data);    
+ 
+     initialize(&data, &window, &renderer, &texture, &surface, file);
+ 
+     SDL_Color currColor = {255,0,0,255};
+     float hue = 0.0f;
+         int running = 1;
+         int start_x = 0;
+         int start_y = 0;
+ 
+     while (running) {
+         running = event_handler(&data, renderer, texture, &surface, &start_x, &start_y, &currColor, &hue);
+         SDL_RenderCopy(renderer, texture, NULL, NULL);
+         SDL_RenderPresent(renderer);
+     }
+ 
+     terminate(window, renderer, texture);
+     return EXIT_SUCCESS;
+}
 
 #pragma endregion Test Funcs 
