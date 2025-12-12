@@ -1,4 +1,4 @@
-#include "neural_network.h"
+#include "nn.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -485,5 +485,135 @@ int load_model(const char *path, Network *net) {
      ./nn train <data.csv> [model.bin]
      ./nn test  <data.csv> <model.bin>
    ========================= */
+int main(int argc, char **argv) {
+    if (argc < 2) {                                           
+        fprintf(stderr,
+            "Usage:\n"
+            "  Train: %s train <data.csv> [model.bin]\n"
+            "  Test : %s test  <data.csv> <model.bin>\n",
+            argv[0], argv[0]);
+        return 1;                                              
+    }
 
+    srand((unsigned)time(NULL));                                 // seed RNG (shuffles etc.)
 
+    Network net;                                               
+    init_network(&net);                                        
+
+    if (strcmp(argv[1], "train") == 0) {                        // TRAIN branch
+        if (argc < 3) {                                         // need CSV path
+            fprintf(stderr, "train: besoin de data.csv\n");
+            free_network(&net);
+            return 2;
+        }
+        const char *csv   = argv[2];                             // dataset file path
+        const char *model = (argc >= 4 ? argv[3] : "model.bin"); // output model path
+
+        Dataset D = load_csv(csv);                               // load dataset in memory
+        if (D.n <= 0) {                                          // empty or failed
+            fprintf(stderr, "pas de données.\n");
+            free_network(&net);
+            return 3;
+        }
+
+        /* one-time split into train/test using a random permutation */
+        int n_train = (int)(TRAIN_SPLIT * D.n);                
+        int n_test  = D.n - n_train;                        
+
+        int *perm = (int*)malloc(sizeof(int) * D.n);           
+        for (int i = 0; i < D.n; ++i)                            
+            perm[i] = i;
+        shuffle_idx(perm, D.n);                                  // shuffle to randomize split
+
+        int *train_idx = (int*)malloc(sizeof(int) * n_train);    // indices for train
+        int *test_idx  = (int*)malloc(sizeof(int) * n_test);     // indices for test
+        for (int i = 0; i < n_train; ++i)                        // first chunk is train
+            train_idx[i] = perm[i];
+        for (int i = 0; i < n_test; ++i)                         // remaining chunk is test
+            test_idx[i] = perm[n_train + i];
+        free(perm);                                              // perm no longer needed
+
+        float best_acc = 0.f;                                    // track best test accuracy
+
+        /* ---- training loop over epochs ---- */
+        for (int e = 0; e < EPOCHS; ++e) {
+            /* cosine learning-rate schedule from LR down to 0 */
+            float lr = LR * (0.5f * (1.0f + cosf(3.14159265f * (float)e / (float)(EPOCHS - 1))));
+
+            shuffle_idx(train_idx, n_train);                     // reshuffle training order
+
+            float loss_sum = 0.f;                               
+            for (int k = 0; k < n_train; ++k) {                  // iterate over training set
+                int i = train_idx[k];                            
+                loss_sum += train_one(&net,                      // one SGD step
+                                       &D.X[i * INPUT_SIZE],     
+                                       D.y[i],                   // label 0-25
+                                       lr);                      
+            }
+            float train_loss = loss_sum / (float)n_train;        // average train loss
+
+            /* evaluate on held-out test split */
+            int correct = 0;                                    
+            for (int k = 0; k < n_test; ++k) {
+                int i = test_idx[k];                            
+                int p = predict(&net, &D.X[i * INPUT_SIZE]);    
+                if (p == D.y[i])                                
+                    ++correct;
+            }
+            float acc = n_test ? (100.f * (float)correct / (float)n_test) : 0.f; // % accuracy
+
+            /* save model if this epoch is the best so far on test split */
+            if (acc > best_acc) {
+                best_acc = acc;
+                save_model(model, &net);
+            }
+
+            /* simple training log */
+            printf("Epoch %d/%d  lr=%.6f  loss=%.4f  acc=%.2f%% (train=%d test=%d)\n",
+                   e + 1, EPOCHS, lr, train_loss, acc, n_train, n_test);
+        }
+
+        free(train_idx);
+        free(test_idx);
+        free_dataset(&D);
+    }
+    else if (strcmp(argv[1], "test") == 0) {                     // TEST branch
+        if (argc < 4) {                                          // need CSV + model path
+            fprintf(stderr, "test: besoin de data.csv et model.bin\n");
+            free_network(&net);
+            return 2;
+        }
+        const char *csv   = argv[2];                              // test set CSV
+        const char *model = argv[3];                              // model to load
+
+        if (load_model(model, &net) != 0) {                       // read weights/biases
+            fprintf(stderr, "load_model échec\n");
+            free_network(&net);
+            return 3;
+        }
+
+        Dataset D = load_csv(csv);                                // load test data
+        if (D.n <= 0) {                                           // empty or failed
+            fprintf(stderr, "pas de données.\n");
+            free_network(&net);
+            return 4;
+        }
+
+        int correct = 0;                                          // count right predictions
+        for (int i = 0; i < D.n; ++i) {
+            int p = predict(&net, &D.X[i * INPUT_SIZE]);          // forward pass + argmax
+            if (p == D.y[i])                                      // compare to label
+                ++correct;
+        }
+        printf("Test accuracy: %.2f%% (%d/%d)\n",                 // print final score
+               100.f * (float)correct / (float)D.n, correct, D.n);
+
+        free_dataset(&D);                                        
+    }
+    else {                                                     
+        fprintf(stderr, "commande inconnue: %s\n", argv[1]);
+    }
+
+    free_network(&net);                                          
+    return 0;                                                     
+}

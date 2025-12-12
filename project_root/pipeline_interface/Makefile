@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -O2 -g -I. -I../setup_image -I../image_cleaner -I../rotation -I../structure_detection -I../letter_extractor -I../solver -I../draw_outline -I../file_saver
+CFLAGS = -Wall -Wextra -O2 -g -I. -I../setup_image -I../image_cleaner -I../rotation -I../structure_detection -I../letter_extractor -I../solver -I../draw_outline -I../file_saver -I../neural_network
 LDFLAGS = -lSDL2 -lSDL2_image -lm
 
 SRC = pipeline_interface.c \
@@ -8,10 +8,12 @@ SRC = pipeline_interface.c \
       ../image_cleaner/image_cleaner.c \
       ../rotation/rotation.c \
       ../structure_detection/structure_detection.c \
-      ../letter_extractor/letter_extractor.c \
       ../solver/solver.c \
       ../draw_outline/draw_outline.c \
-      ../file_saver/file_saver.c
+      ../file_saver/file_saver.c \
+      ../neural_network/nn.c \
+      ../neural_network/digitalisation.c \
+      ../letter_extractor/letter_extractor.c
 
 OBJ = $(SRC:.c=.o)
 

@@ -1,0 +1,26 @@
+rotation:
+./output/rotation_compiled test.png 90
+
+solved:
+./output/solver grid APPLE
+
+draw_outline:
+./output/draw_outline test.png test_result.(png/bmp)
+
+digitalisation:
+./digitalisation letters.csv *_*.png
+reverse:
+gcc -O2 -Wall -Wextra neural_network/csv2img_simple.c -o output/csv2img_simple -lSDL2
+./output/csv2img_simple letters.csv out_preview.bmp 1
+
+neural network:
+gcc -O3 -march=native -std=c11 -Wall -Wextra neural_network/nn.c -o nn -lm
+ou
+gcc -O3 -Ofast -march=native -mtune=native -flto     -ffp-contract=fast -funroll-loops -fno-math-errno -fno-trapping-math     -ffast-math -fno-signaling-nans -fno-rounding-math     -I neural_network neural_network/nn.c -o nn_fast -lm
+
+
+
+pipe:
+gcc -g -O3 -Ofast -fsanitize=address -fno-omit-frame-pointer   -I neural_network neural_network/nn.c -c -o neural_network/nn.asan.o
+gcc -g -O3 -Ofast -fsanitize=address -fno-omit-frame-pointer   -I neural_network -I .   pipeline_interface/pipeline_interface.c neural_network/nn.asan.o   draw_outline/*.c structure_detection/*.c letter_extractor/*.c solver/*.c neural_network/digitalisation.c neural_network/nn_train.c  -lSDL2
+ -lSDL2_image -lm -o ibrahim_interface_asan

@@ -7,7 +7,7 @@
 
 #define GRAY_LEVELS 256
 
-void convert_to_grayscale(SDL_Surface *surface) {
+void convert_to_grayscale(SDL_Surface* surface) {
     if (!surface) return;
 
     int width = surface->w;
@@ -38,7 +38,7 @@ void convert_to_grayscale(SDL_Surface *surface) {
 
 
 
-void compute_histogram(SDL_Surface *surface, int histogram[GRAY_LEVELS]) {
+void compute_histogram(SDL_Surface* surface, int histogram[GRAY_LEVELS]) {
     if (!surface) errx(1, "Surface is NULL");
     memset(histogram, 0, sizeof(int) * GRAY_LEVELS);
 
@@ -114,7 +114,7 @@ int compute_otsu_threshold(int histogram[GRAY_LEVELS], int total_pixels) {
 }
 
 
-void apply_threshold(SDL_Surface *surface, int threshold) {
+void apply_threshold(SDL_Surface* surface, int threshold) {
     int width = surface->w;
     int height = surface->h;
 
@@ -160,7 +160,7 @@ void apply_otsu_thresholding(SDL_Surface* surface) {
 
 
 
-void apply_noise_removal(SDL_Surface *surface, int threshold) {
+void apply_noise_removal(SDL_Surface* surface, int threshold) {
     if (!surface) return;
 
     int width  = surface->w;
