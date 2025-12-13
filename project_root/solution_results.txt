@@ -1,0 +1,34 @@
+=== CROSSWORD SOLUTION ===
+
+Grid (17 x 17):
+P X U T S L N L U P R V G B M D B 
+E H A A S P O J P E T B E Q Z L C 
+A U N T E G Q T K H R Z F A T O P 
+S H X F N G U A X E A A Y P O M H 
+Y O Y Y L D X L A K Y U Z L B S K 
+J X M U U G Q T R L M A G L N E B 
+H F N W F X H D P B B B T N V S K 
+H L L H D E S Q F U M Y E R N S X 
+R P B Z N H S D S L H O N B S S S 
+E H X A L Z L H A H Q E S Q F E F 
+C W Z L M V D C J V S S L M G R W 
+L A L L R Z Q Q H X D Z O Z Q T R 
+W C A X E Z R G H A L Z N E C S E 
+B R H F O T G N L T S E R E O V Z 
+M W V W Q D U L H W Q T S B L M L 
+T D T O N Z C X X R G E K K H F Q 
+Q N E K S V M O T F A L A A E W B 
+
+=== FOUND WORDS ===
+IMAGINE: NOT FOUND
+RELAX: NOT FOUND
+COOL: (16,1) -> (13,4)
+RESTING: NOT FOUND
+BREATHE: (11,1) -> (5,7)
+EASY: (0,1) -> (0,4)
+TENSION: NOT FOUND
+STRESS: (15,12) -> (15,7)
+CALM: (7,10) -> (10,7)
+
+=== SUMMARY ===
+Found: 5 / 9 words
