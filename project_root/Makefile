@@ -47,13 +47,6 @@ no:
 $(BIN): $(OBJ)
 	$(CC) $(OBJ) -o $(BIN) $(LDFLAGS)
 
-# Explicit rules for modules
-image_cleaner/image_cleaner.o: image_cleaner/image_cleaner.c image_cleaner/image_cleaner.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
-file_saver/file_saver.o: file_saver/file_saver.c file_saver/file_saver.h
-	$(CC) $(CFLAGS) -c $< -o $@
-
 # Only compile file_picker when USE_PICKER=1
 ifeq ($(USE_PICKER),1)
 file_picker/file_picker.o: file_picker/file_picker.c file_picker/file_picker.h
