@@ -16,6 +16,7 @@
 /* Small helper for 3D tensor [C, H, W] stored as [c][y][x]. */
 static inline int NN_I3(int c, int y, int x, int C, int HH, int WW)
 {
+    (void)C;
     return c * HH * WW + y * WW + x;
 }
 

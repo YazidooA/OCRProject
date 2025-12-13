@@ -301,7 +301,7 @@ static int flood_fill_components(SDL_Surface *s32,
  *  Helper 2 : CAS 1 – grande grille avec traits → liste à droite/gauche
  * ============================================================================
  */
-static void detect_case1_grid_list(const Uint32 *P, int pitch, int W, int H,
+static void detect_case1_grid_list(const Uint32 *P, int pitch, int W, 
                                    const SDL_Rect *bestBox,
                                    SDL_Rect *grid, SDL_Rect *list)
 {
@@ -465,7 +465,6 @@ static void detect_case2_letters_only(const Uint32 *P, int pitch, int W, int H,
         Li = &left;
     }
 
-    double wG  = (double)(G->maxx  - G->minx  + 1);
     double wLi = (double)(Li->maxx - Li->minx + 1);
     double relWL = wLi / (double)globalW;
     if (relWL < 0.05 || relWL > 0.6) {
@@ -745,7 +744,7 @@ int detect_grid_and_list(SDL_Surface *src, SDL_Rect *grid, SDL_Rect *list)
 
     if (bestArea > 0) {
         /* ===================== CAS 1 : grande grille avec traits ===================== */
-        detect_case1_grid_list(P, pitch, W, H, &bestBox, grid, list);
+        detect_case1_grid_list(P, pitch, W, &bestBox, grid, list);
     } else {
         /* ===================== CAS 2 : fallback lettres seules ===================== */
 

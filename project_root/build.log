@@ -1,0 +1,13 @@
+gcc -Wall -Wextra -Werror -O2 `sdl2-config --cflags` -DUSE_FILE_PICKER -c draw_outline/draw_outline.c -o draw_outline/draw_outline.o
+gcc -Wall -Wextra -Werror -O2 `sdl2-config --cflags` -DUSE_FILE_PICKER -c file_saver/file_saver.c -o file_saver/file_saver.o
+gcc -Wall -Wextra -Werror -O2 `sdl2-config --cflags` -DUSE_FILE_PICKER -c image_cleaner/image_cleaner.c -o image_cleaner/image_cleaner.o
+gcc -Wall -Wextra -Werror -O2 `sdl2-config --cflags` -DUSE_FILE_PICKER -c letter_extractor/letter_extractor.c -o letter_extractor/letter_extractor.o
+letter_extractor/letter_extractor.c: In function ‘extract_letters’:
+letter_extractor/letter_extractor.c:576:11: error: ‘G’ may be used uninitialized [-Werror=maybe-uninitialized]
+  576 |   int T = otsu_threshold_gray(G, rw * rh);
+      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+letter_extractor/letter_extractor.c:12:12: note: by argument 1 of type ‘const Uint8 *’ {aka ‘const unsigned char *’} to ‘otsu_threshold_gray’ declared here
+   12 | static int otsu_threshold_gray(const Uint8 *g, int n) {
+      |            ^~~~~~~~~~~~~~~~~~~
+cc1: all warnings being treated as errors
+make: *** [Makefile:59: letter_extractor/letter_extractor.o] Error 1

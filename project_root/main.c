@@ -1,3 +1,20 @@
+/*
+ * main.c - OCR Image Processor Application
+ *
+ * This is the main application file for an interactive OCR (Optical Character
+ * Recognition) image processing tool. It provides a graphical interface with
+ * buttons for various image processing operations including grayscale
+ * conversion, Otsu thresholding, rotation correction, noise removal, and
+ * crossword grid solving.
+ *
+ * Key Features:
+ * - Interactive UI with SDL2
+ * - File picker for image selection (when compiled with USE_FILE_PICKER)
+ * - Multiple image processing operations
+ * - Automatic processing pipeline
+ * - Real-time preview of processing results
+ */
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
@@ -13,67 +30,97 @@
 #include "file_picker/file_picker.h"
 #endif
 
+/* Global variable storing the current image file path */
 char filepath[512] = "input.png";
 
-/* Action IDs for buttons */
+/**
+ * Enumeration of all available button actions in the UI
+ */
 typedef enum {
-  ACTION_RESET,
-  ACTION_ROTATE,
-  ACTION_GRAYSCALE,
-  ACTION_OTSU,
-  ACTION_DENOISE,
-  ACTION_SAVE,
-  ACTION_AUTO_PROCESS,
-  ACTION_SOLVE_GRID,
+  ACTION_RESET,        /* Reload the original image */
+  ACTION_ROTATE,       /* Auto-rotate/deskew the image */
+  ACTION_GRAYSCALE,    /* Convert to grayscale */
+  ACTION_OTSU,         /* Apply Otsu thresholding */
+  ACTION_DENOISE,      /* Remove noise from the image */
+  ACTION_SAVE,         /* Save the current image */
+  ACTION_AUTO_PROCESS, /* Run the full processing pipeline */
+  ACTION_SOLVE_GRID,   /* Detect and solve crossword grid */
 #ifdef USE_FILE_PICKER
-  ACTION_OPEN_FILE
+  ACTION_OPEN_FILE /* Open file picker dialog */
 #endif
 } ActionType;
 
-/* Button structure */
+/**
+ * Structure representing a clickable button in the UI
+ */
 typedef struct {
-  SDL_Rect rect;
-  const char *label;
-  SDL_Color color;
-  SDL_Color hover_color;
-  ActionType action;
+  SDL_Rect rect;         /* Position and size of the button */
+  const char *label;     /* Text label to display */
+  SDL_Color color;       /* Normal button color */
+  SDL_Color hover_color; /* Color when mouse hovers over button */
+  ActionType action;     /* Action to perform when clicked */
 } Button;
 
-/* Check if point is inside rectangle */
+/**
+ * Check if a point (x, y) is inside a rectangle
+ *
+ * Used for hit testing to determine if the mouse cursor is over a button.
+ *
+ * @param x    X coordinate of the point
+ * @param y    Y coordinate of the point
+ * @param rect Pointer to the rectangle to test
+ * @return     1 if point is inside rectangle, 0 otherwise
+ */
 int point_in_rect(int x, int y, SDL_Rect *rect) {
   return (x >= rect->x && x < rect->x + rect->w && y >= rect->y &&
           y < rect->y + rect->h);
 }
 
-/* Render button with text */
+/**
+ * Render a button on the screen with its label
+ *
+ * Draws a colored rectangle with text centered inside. The button color changes
+ * when the mouse hovers over it to provide visual feedback.
+ *
+ * @param renderer SDL renderer to draw with
+ * @param btn      Pointer to the button structure  to render
+ * @param font     TTF font to use for the button label
+ * @param is_hover 1 if mouse is hovering over button, 0 otherwise
+ */
 void render_button(SDL_Renderer *renderer, Button *btn, TTF_Font *font,
                    int is_hover) {
+  /* Safety check */
   if (!renderer || !btn)
     return;
 
-  /* Button background */
+  /* Draw button background (use hover color if mouse is over button) */
   SDL_Color *color = is_hover ? &btn->hover_color : &btn->color;
   SDL_SetRenderDrawColor(renderer, color->r, color->g, color->b, color->a);
   SDL_RenderFillRect(renderer, &btn->rect);
 
-  /* Button border */
+  /* Draw button border for better visual separation */
   SDL_SetRenderDrawColor(renderer, 50, 50, 50, 255);
   SDL_RenderDrawRect(renderer, &btn->rect);
 
-  /* Button text */
+  /* Render the button label text */
   if (font && btn->label) {
-    SDL_Color text_color = {255, 255, 255, 255};
+    SDL_Color text_color = {255, 255, 255, 255}; /* White text */
+
+    /* Try anti-aliased blended rendering first (higher quality) */
     SDL_Surface *text_surface =
         TTF_RenderText_Blended(font, btn->label, text_color);
 
+    /* Fall back to solid rendering if blended fails */
     if (!text_surface) {
       text_surface = TTF_RenderText_Solid(font, btn->label, text_color);
     }
 
     if (text_surface) {
+      /* Convert text surface to texture for rendering */
       SDL_Texture *text_texture =
           SDL_CreateTextureFromSurface(renderer, text_surface);
       if (text_texture) {
+        /* Center the text within the button */
         SDL_Rect text_rect = {btn->rect.x + (btn->rect.w - text_surface->w) / 2,
                               btn->rect.y + (btn->rect.h - text_surface->h) / 2,
                               text_surface->w, text_surface->h};
@@ -85,21 +132,35 @@ void render_button(SDL_Renderer *renderer, Button *btn, TTF_Font *font,
   }
 }
 
+/**
+ * Main application entry point
+ *
+ * Initializes SDL, creates the main window, loads the image, and runs the main
+ * event loop. Handles user interactions through buttons and keyboard shortcuts
+ * to perform various image processing operations.
+ *
+ * @param argc Number of command-line arguments
+ * @param argv Array of command-line argument strings
+ * @return     0 on success, 1 on error
+ */
 int main(int argc, char **argv) {
 #ifdef USE_FILE_PICKER
-  /* Si pas d'argument, ouvrir le sélecteur de fichiers */
+  /* If no command-line argument provided, open file picker */
   if (argc < 2) {
+    /* Initialize SDL for file picker */
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
       printf("SDL Init error: %s\n", SDL_GetError());
       return 1;
     }
 
+    /* Initialize SDL_ttf for text rendering in file picker */
     if (TTF_Init() < 0) {
       printf("TTF Init error: %s\n", TTF_GetError());
       SDL_Quit();
       return 1;
     }
 
+    /* Open file picker dialog to select an image */
     printf("Opening file picker...\n");
     if (show_file_picker(filepath, sizeof(filepath))) {
       printf("File selected: %s\n", filepath);
@@ -107,55 +168,66 @@ int main(int argc, char **argv) {
       printf("No file selected, using default: %s\n", filepath);
     }
 
+    /* Clean up file picker resources */
     TTF_Quit();
     SDL_Quit();
   } else {
+    /* Use image path from command-line argument */
     strncpy(filepath, argv[1], sizeof(filepath));
-    filepath[sizeof(filepath) - 1] = '\0';
+    filepath[sizeof(filepath) - 1] = '\0'; /* Ensure null termination */
   }
 #else
+  /* Without file picker, only accept command-line argument */
   if (argc >= 2) {
     strncpy(filepath, argv[1], sizeof(filepath));
     filepath[sizeof(filepath) - 1] = '\0';
   }
 #endif
 
+  /* ===== Initialize SDL and create main window ===== */
+
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     printf("SDL Init error: %s\n", SDL_GetError());
     return 1;
   }
 
+  /* Initialize SDL_ttf for text rendering */
   if (TTF_Init() < 0) {
     printf("TTF Init error: %s\n", TTF_GetError());
     SDL_Quit();
     return 1;
   }
 
+  /* Initialize SDL_image for PNG and JPG loading */
   IMG_Init(IMG_INIT_PNG | IMG_INIT_JPG);
 
+  /* Create the main application window (1100x800 pixels) */
   SDL_Window *win =
       SDL_CreateWindow("OCR Image Processor", SDL_WINDOWPOS_CENTERED,
                        SDL_WINDOWPOS_CENTERED, 1100, 800, SDL_WINDOW_SHOWN);
 
+  /* Create hardware-accelerated renderer for drawing */
   SDL_Renderer *renderer =
       SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
 
-  /* Load font - Fedora paths */
+  /* Try to load a font from common Linux font paths */
   const char *font_paths[] = {
-      "/usr/share/fonts/liberation-sans-fonts/LiberationSans-Regular.ttf",
+      "/usr/share/fonts/liberation-sans-fonts/LiberationSans-Regular.ttf", /* Fedora
+                                                                            */
       "/usr/share/fonts/google-droid-sans-fonts/DroidSans.ttf",
       "/usr/share/fonts/open-sans/OpenSans-Regular.ttf",
       "/usr/share/fonts/adwaita-sans-fonts/AdwaitaSans-Regular.ttf", NULL};
 
   TTF_Font *font = NULL;
   for (int i = 0; font_paths[i] != NULL; i++) {
-    font = TTF_OpenFont(font_paths[i], 16);
+    font = TTF_OpenFont(font_paths[i], 16); /* 16-point font size */
     if (font) {
       printf("✓ Loaded font: %s\n", font_paths[i]);
       break;
     }
   }
 
+  /* Error handling if no font could be loaded */
   if (!font) {
     printf("ERROR: Could not load any font!\n");
     TTF_Quit();
@@ -165,14 +237,17 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  /* Initialize image_data */
+  /* ===== Load the input image ===== */
+
+  /* Initialize image data structure with file path */
   struct image_data data;
   fill_data(&data, filepath);
 
-  /* Load surface */
+  /* Load the image file into an SDL surface */
   SDL_Surface *surface = NULL;
   load_in_surface(&data, &surface);
 
+  /* Error handling if image failed to load */
   if (!surface) {
     printf("Error loading image\n");
     TTF_CloseFont(font);
@@ -183,10 +258,11 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  /* Create texture from surface */
+  /* Create a GPU texture from the loaded surface for faster rendering */
   SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
 
-  /* Define buttons (right side panel) */
+  /* ===== Define UI Buttons ===== */
+  /* Button layout differs based on whether file picker is enabled */
   Button buttons[] = {
 #ifdef USE_FILE_PICKER
       {{850, 30, 200, 50},
@@ -251,7 +327,7 @@ int main(int argc, char **argv) {
        {125, 125, 125, 255},
        ACTION_GRAYSCALE},
       {{850, 260, 200, 50},
-       "Otsu (H)",
+       "Otf//su (H)",
        {184, 134, 11, 255},
        {204, 154, 31, 255},
        ACTION_OTSU},
