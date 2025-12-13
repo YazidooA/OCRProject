@@ -287,7 +287,7 @@ int main(int argc, char **argv) {
   printf("  O / Open File         - Select a new file\n");
 #endif
   printf("  A / Auto Process      - Apply all steps "
-         "(Grayscale→Otsu→Rotate→Denoise)\n");
+         "(Grayscale→Otsu→Rotate→Denoise→Solve Grid)\n");
   printf("  C / Reset button      - Reload original image\n");
   printf("  H / Otsu button       - Apply Otsu thresholding\n");
   printf("  G / Grayscale button  - Convert to grayscale\n");
@@ -365,7 +365,7 @@ int main(int argc, char **argv) {
             printf("\n=== Starting Auto Processing ===\n");
 
             // Step 1: Grayscale
-            printf("[1/4] Converting to grayscale...\n");
+            printf("[1/5] Converting to grayscale...\n");
             convert_to_grayscale(surface);
             save_surface(&data, surface, "auto_1_grayscale");
             SDL_DestroyTexture(texture);
@@ -380,7 +380,7 @@ int main(int argc, char **argv) {
             SDL_Delay(300);
 
             // Step 2: Otsu Thresholding
-            printf("[2/4] Applying Otsu thresholding...\n");
+            printf("[2/5] Applying Otsu thresholding...\n");
             apply_otsu_thresholding(surface);
             save_surface(&data, surface, "auto_2_otsu");
             SDL_DestroyTexture(texture);
@@ -394,7 +394,7 @@ int main(int argc, char **argv) {
             SDL_Delay(300);
 
             // Step 3: Rotate
-            printf("[3/4] Auto-rotating image...\n");
+            printf("[3/5] Auto-rotating image...\n");
             double angle = auto_deskew_correction(surface);
             printf("        Detected angle: %.2f degrees\n", angle);
             SDL_Surface *rot = rotate(surface, angle);
@@ -414,14 +414,62 @@ int main(int argc, char **argv) {
             }
 
             // Step 4: Denoise
-            printf("[4/4] Applying noise removal...\n");
+            printf("[4/5] Applying noise removal...\n");
             apply_noise_removal(surface, 2);
             save_surface(&data, surface, "auto_4_denoise_FINAL");
             SDL_DestroyTexture(texture);
             texture = SDL_CreateTextureFromSurface(renderer, surface);
+            SDL_RenderClear(renderer);
+            SDL_RenderCopy(renderer, texture, NULL, &img_rect);
+            for (int i = 0; i < num_buttons; i++) {
+              render_button(renderer, &buttons[i], font, (i == hover_button));
+            }
+            SDL_RenderPresent(renderer);
+            SDL_Delay(300);
+
+            // Step 5: Solve Grid
+            printf("[5/5] Solving crossword grid...\n");
+
+            // Display "Résolution en cours..." message
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
+            SDL_Rect overlay = {200, 350, 450, 80};
+            SDL_RenderFillRect(renderer, &overlay);
+
+            SDL_Color white = {255, 255, 255, 255};
+            SDL_Surface *text_surf =
+                TTF_RenderUTF8_Blended(font, "Résolution en cours...", white);
+            if (text_surf) {
+              SDL_Texture *text_tex =
+                  SDL_CreateTextureFromSurface(renderer, text_surf);
+              if (text_tex) {
+                SDL_Rect text_rect = {425 - text_surf->w / 2, 370, text_surf->w,
+                                      text_surf->h};
+                SDL_RenderCopy(renderer, text_tex, NULL, &text_rect);
+                SDL_DestroyTexture(text_tex);
+              }
+              SDL_FreeSurface(text_surf);
+            }
+            SDL_RenderPresent(renderer);
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+
+            SDL_Surface *result = pipeline(surface, renderer);
+            if (result) {
+              printf("Pipeline completed successfully!\n");
+              SDL_Surface *result_image = IMG_Load("result.png");
+              if (result_image) {
+                SDL_FreeSurface(surface);
+                surface = result_image;
+                SDL_DestroyTexture(texture);
+                texture = SDL_CreateTextureFromSurface(renderer, surface);
+                printf("✓ Annotated image loaded!\n");
+              }
+            } else {
+              printf("Warning: Pipeline failed\n");
+            }
 
             printf("=== Auto Processing Complete! ===\n");
-            printf("Final image saved as: auto_4_denoise_FINAL.png\n\n");
+            printf("Final result saved as: result.png\n\n");
             break;
 
           case ACTION_RESET:
@@ -589,19 +637,19 @@ int main(int argc, char **argv) {
         case SDLK_a: {
           printf("\n=== Starting Auto Processing ===\n");
 
-          printf("[1/4] Converting to grayscale...\n");
+          printf("[1/5] Converting to grayscale...\n");
           convert_to_grayscale(surface);
           save_surface(&data, surface, "auto_1_grayscale");
           SDL_DestroyTexture(texture);
           texture = SDL_CreateTextureFromSurface(renderer, surface);
 
-          printf("[2/4] Applying Otsu thresholding...\n");
+          printf("[2/5] Applying Otsu thresholding...\n");
           apply_otsu_thresholding(surface);
           save_surface(&data, surface, "auto_2_otsu");
           SDL_DestroyTexture(texture);
           texture = SDL_CreateTextureFromSurface(renderer, surface);
 
-          printf("[3/4] Auto-rotating image...\n");
+          printf("[3/5] Auto-rotating image...\n");
           double angle = auto_deskew_correction(surface);
           printf("        Detected angle: %.2f degrees\n", angle);
           SDL_Surface *rot = rotate(surface, angle);
@@ -613,14 +661,54 @@ int main(int argc, char **argv) {
             texture = SDL_CreateTextureFromSurface(renderer, surface);
           }
 
-          printf("[4/4] Applying noise removal...\n");
+          printf("[4/5] Applying noise removal...\n");
           apply_noise_removal(surface, 2);
           save_surface(&data, surface, "auto_4_denoise_FINAL");
           SDL_DestroyTexture(texture);
           texture = SDL_CreateTextureFromSurface(renderer, surface);
 
+          printf("[5/5] Solving crossword grid...\n");
+
+          // Display "Résolution en cours..." message
+          SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+          SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
+          SDL_Rect overlay = {200, 350, 450, 80};
+          SDL_RenderFillRect(renderer, &overlay);
+
+          SDL_Color white = {255, 255, 255, 255};
+          SDL_Surface *text_surf =
+              TTF_RenderUTF8_Blended(font, "Résolution en cours...", white);
+          if (text_surf) {
+            SDL_Texture *text_tex =
+                SDL_CreateTextureFromSurface(renderer, text_surf);
+            if (text_tex) {
+              SDL_Rect text_rect = {425 - text_surf->w / 2, 370, text_surf->w,
+                                    text_surf->h};
+              SDL_RenderCopy(renderer, text_tex, NULL, &text_rect);
+              SDL_DestroyTexture(text_tex);
+            }
+            SDL_FreeSurface(text_surf);
+          }
+          SDL_RenderPresent(renderer);
+          SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+
+          SDL_Surface *result = pipeline(surface, renderer);
+          if (result) {
+            printf("Pipeline completed successfully!\n");
+            SDL_Surface *result_image = IMG_Load("result.png");
+            if (result_image) {
+              SDL_FreeSurface(surface);
+              surface = result_image;
+              SDL_DestroyTexture(texture);
+              texture = SDL_CreateTextureFromSurface(renderer, surface);
+              printf("✓ Annotated image loaded!\n");
+            }
+          } else {
+            printf("Warning: Pipeline failed\n");
+          }
+
           printf("=== Auto Processing Complete! ===\n");
-          printf("Final image saved as: auto_4_denoise_FINAL.png\n\n");
+          printf("Final result saved as: result.png\n\n");
           break;
         }
 
