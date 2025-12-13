@@ -9,6 +9,10 @@
 #include "rotation/rotation.h"
 #include "setup_image/setup_image.h"
 
+#ifdef USE_FILE_PICKER
+#include "file_picker/file_picker.h"
+#endif
+
 char filepath[512] = "input.png";
 
 /* Action IDs for buttons */
@@ -20,7 +24,10 @@ typedef enum {
   ACTION_DENOISE,
   ACTION_SAVE,
   ACTION_AUTO_PROCESS,
-  ACTION_SOLVE_GRID // New: Solve the crossword grid
+  ACTION_SOLVE_GRID,
+#ifdef USE_FILE_PICKER
+  ACTION_OPEN_FILE
+#endif
 } ActionType;
 
 /* Button structure */
@@ -79,10 +86,39 @@ void render_button(SDL_Renderer *renderer, Button *btn, TTF_Font *font,
 }
 
 int main(int argc, char **argv) {
+#ifdef USE_FILE_PICKER
+  /* Si pas d'argument, ouvrir le sélecteur de fichiers */
+  if (argc < 2) {
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+      printf("SDL Init error: %s\n", SDL_GetError());
+      return 1;
+    }
+
+    if (TTF_Init() < 0) {
+      printf("TTF Init error: %s\n", TTF_GetError());
+      SDL_Quit();
+      return 1;
+    }
+
+    printf("Opening file picker...\n");
+    if (show_file_picker(filepath, sizeof(filepath))) {
+      printf("File selected: %s\n", filepath);
+    } else {
+      printf("No file selected, using default: %s\n", filepath);
+    }
+
+    TTF_Quit();
+    SDL_Quit();
+  } else {
+    strncpy(filepath, argv[1], sizeof(filepath));
+    filepath[sizeof(filepath) - 1] = '\0';
+  }
+#else
   if (argc >= 2) {
     strncpy(filepath, argv[1], sizeof(filepath));
     filepath[sizeof(filepath) - 1] = '\0';
   }
+#endif
 
   if (SDL_Init(SDL_INIT_VIDEO) < 0) {
     printf("SDL Init error: %s\n", SDL_GetError());
@@ -152,6 +188,53 @@ int main(int argc, char **argv) {
 
   /* Define buttons (right side panel) */
   Button buttons[] = {
+#ifdef USE_FILE_PICKER
+      {{850, 30, 200, 50},
+       "Open File (O)",
+       {100, 149, 237, 255},
+       {120, 169, 255, 255},
+       ACTION_OPEN_FILE},
+      {{850, 100, 200, 60},
+       "Auto Process (A)",
+       {255, 69, 0, 255},
+       {255, 99, 30, 255},
+       ACTION_AUTO_PROCESS},
+      {{850, 180, 200, 50},
+       "Reset (C)",
+       {70, 130, 180, 255},
+       {90, 150, 200, 255},
+       ACTION_RESET},
+      {{850, 250, 200, 50},
+       "Otsu (H)",
+       {184, 134, 11, 255},
+       {204, 154, 31, 255},
+       ACTION_OTSU},
+      {{850, 320, 200, 50},
+       "Grayscale (G)",
+       {105, 105, 105, 255},
+       {125, 125, 125, 255},
+       ACTION_GRAYSCALE},
+      {{850, 390, 200, 50},
+       "Rotate (R)",
+       {34, 139, 34, 255},
+       {54, 159, 54, 255},
+       ACTION_ROTATE},
+      {{850, 460, 200, 50},
+       "Denoise (J)",
+       {128, 0, 128, 255},
+       {148, 20, 148, 255},
+       ACTION_DENOISE},
+      {{850, 530, 200, 50},
+       "Save (Ctrl+S)",
+       {220, 20, 60, 255},
+       {240, 40, 80, 255},
+       ACTION_SAVE},
+      {{850, 600, 200, 50},
+       "Solve Grid (V)",
+       {0, 128, 128, 255},
+       {0, 148, 148, 255},
+       ACTION_SOLVE_GRID},
+#else
       {{850, 30, 200, 70},
        "Auto Process (A)",
        {255, 69, 0, 255},
@@ -189,9 +272,10 @@ int main(int argc, char **argv) {
        ACTION_SAVE},
       {{850, 540, 200, 60},
        "Solve Grid (V)",
-       {0, 128, 128, 255}, // Teal color
+       {0, 128, 128, 255},
        {0, 148, 148, 255},
        ACTION_SOLVE_GRID},
+#endif
   };
   int num_buttons = sizeof(buttons) / sizeof(buttons[0]);
 
@@ -199,6 +283,9 @@ int main(int argc, char **argv) {
   printf("\n=== OCR Image Processor ===\n");
   printf("Image loaded: %s\n", filepath);
   printf("\nClick buttons or use keyboard shortcuts:\n");
+#ifdef USE_FILE_PICKER
+  printf("  O / Open File         - Select a new file\n");
+#endif
   printf("  A / Auto Process      - Apply all steps "
          "(Grayscale→Otsu→Rotate→Denoise)\n");
   printf("  C / Reset button      - Reload original image\n");
@@ -249,6 +336,31 @@ int main(int argc, char **argv) {
           ActionType action = buttons[clicked_button].action;
 
           switch (action) {
+#ifdef USE_FILE_PICKER
+          case ACTION_OPEN_FILE: {
+            printf("Opening file picker...\n");
+            char new_filepath[512];
+            if (show_file_picker(new_filepath, sizeof(new_filepath))) {
+              printf("New file selected: %s\n", new_filepath);
+              strncpy(filepath, new_filepath, sizeof(filepath));
+              filepath[sizeof(filepath) - 1] = '\0';
+
+              /* Reload image */
+              SDL_FreeSurface(surface);
+              fill_data(&data, filepath);
+              surface = NULL;
+              load_in_surface(&data, &surface);
+
+              if (surface) {
+                SDL_DestroyTexture(texture);
+                texture = SDL_CreateTextureFromSurface(renderer, surface);
+              }
+            } else {
+              printf("File selection cancelled\n");
+            }
+            break;
+          }
+#endif
           case ACTION_AUTO_PROCESS:
             printf("\n=== Starting Auto Processing ===\n");
 
@@ -370,11 +482,44 @@ int main(int argc, char **argv) {
           case ACTION_SOLVE_GRID: {
             printf("\n=== Starting Grid Resolution with Pipeline ===\n");
 
-            // Call the pipeline function - it processes everything
+            // Afficher un message "Résolution en cours..." à l'écran
+            SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255);
+            SDL_RenderClear(renderer);
+
+            // Afficher l'image actuelle
+            if (texture) {
+              SDL_Rect img_rect = {10, 10, 820, 780};
+              SDL_RenderCopy(renderer, texture, NULL, &img_rect);
+            }
+
+            // Dessiner un rectangle semi-transparent
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
+            SDL_Rect overlay = {200, 350, 450, 80};
+            SDL_RenderFillRect(renderer, &overlay);
+
+            // Texte "Résolution en cours..."
+            SDL_Color white = {255, 255, 255, 255};
+            SDL_Surface *text_surf =
+                TTF_RenderUTF8_Blended(font, "Résolution en cours...", white);
+            if (text_surf) {
+              SDL_Texture *text_tex =
+                  SDL_CreateTextureFromSurface(renderer, text_surf);
+              if (text_tex) {
+                SDL_Rect text_rect = {425 - text_surf->w / 2, 370, text_surf->w,
+                                      text_surf->h};
+                SDL_RenderCopy(renderer, text_tex, NULL, &text_rect);
+                SDL_DestroyTexture(text_tex);
+              }
+              SDL_FreeSurface(text_surf);
+            }
+
+            SDL_RenderPresent(renderer);
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+
             SDL_Surface *result = pipeline(surface, renderer);
 
             if (result) {
-              // Pipeline returns the same surface, now with annotations drawn
               printf("Pipeline completed successfully!\n");
               printf("=== Grid Resolution Complete! ===\n");
               printf("Results saved to:\n");
@@ -382,22 +527,16 @@ int main(int argc, char **argv) {
               printf("  - grid (text file with grid + words)\n");
               printf("  - tile_debug.bmp (debug tile)\n\n");
 
-              // Load result.png to show the annotated image
               SDL_Surface *result_image = IMG_Load("result.png");
               if (result_image) {
-                // Replace current surface with the annotated one
                 SDL_FreeSurface(surface);
                 surface = result_image;
-
-                // Update texture to display it
                 SDL_DestroyTexture(texture);
                 texture = SDL_CreateTextureFromSurface(renderer, surface);
-
                 printf("✓ Annotated image loaded into interface!\n");
               } else {
                 fprintf(stderr, "Warning: Could not load result.png: %s\n",
                         IMG_GetError());
-                // Still update the texture with the current surface
                 SDL_DestroyTexture(texture);
                 texture = SDL_CreateTextureFromSurface(renderer, surface);
               }
@@ -422,8 +561,32 @@ int main(int argc, char **argv) {
           running = 0;
           break;
 
+#ifdef USE_FILE_PICKER
+        case SDLK_o: {
+          printf("Opening file picker...\n");
+          char new_filepath[512];
+          if (show_file_picker(new_filepath, sizeof(new_filepath))) {
+            printf("New file selected: %s\n", new_filepath);
+            strncpy(filepath, new_filepath, sizeof(filepath));
+            filepath[sizeof(filepath) - 1] = '\0';
+
+            SDL_FreeSurface(surface);
+            fill_data(&data, filepath);
+            surface = NULL;
+            load_in_surface(&data, &surface);
+
+            if (surface) {
+              SDL_DestroyTexture(texture);
+              texture = SDL_CreateTextureFromSurface(renderer, surface);
+            }
+          } else {
+            printf("File selection cancelled\n");
+          }
+          break;
+        }
+#endif
+
         case SDLK_a: {
-          // Auto process - same as button
           printf("\n=== Starting Auto Processing ===\n");
 
           printf("[1/4] Converting to grayscale...\n");
@@ -514,6 +677,38 @@ int main(int argc, char **argv) {
         case SDLK_v: {
           printf("\n=== Starting Grid Resolution with Pipeline ===\n");
 
+          // Afficher un message "Résolution en cours..." à l'écran
+          SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255);
+          SDL_RenderClear(renderer);
+
+          if (texture) {
+            SDL_Rect img_rect = {10, 10, 820, 780};
+            SDL_RenderCopy(renderer, texture, NULL, &img_rect);
+          }
+
+          SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+          SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
+          SDL_Rect overlay = {200, 350, 450, 80};
+          SDL_RenderFillRect(renderer, &overlay);
+
+          SDL_Color white = {255, 255, 255, 255};
+          SDL_Surface *text_surf =
+              TTF_RenderUTF8_Blended(font, "Résolution en cours...", white);
+          if (text_surf) {
+            SDL_Texture *text_tex =
+                SDL_CreateTextureFromSurface(renderer, text_surf);
+            if (text_tex) {
+              SDL_Rect text_rect = {425 - text_surf->w / 2, 370, text_surf->w,
+                                    text_surf->h};
+              SDL_RenderCopy(renderer, text_tex, NULL, &text_rect);
+              SDL_DestroyTexture(text_tex);
+            }
+            SDL_FreeSurface(text_surf);
+          }
+
+          SDL_RenderPresent(renderer);
+          SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+
           SDL_Surface *result = pipeline(surface, renderer);
 
           if (result) {
@@ -524,7 +719,6 @@ int main(int argc, char **argv) {
             printf("  - grid (text file with grid + words)\n");
             printf("  - tile_debug.bmp (debug tile)\n\n");
 
-            // Load result.png to show the annotated image
             SDL_Surface *result_image = IMG_Load("result.png");
             if (result_image) {
               SDL_FreeSurface(surface);
