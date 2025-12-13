@@ -14,7 +14,7 @@ Click buttons or use keyboard shortcuts:
 How to use Makefile:
 
 make yes => It will build the program with file picker support
-make/make no => It will build the program without file picker support
+make all/no => It will build the program without file picker support
 ./ui_app => It will run the program
 ./ui_app test.png => It will run the program with test.png as input
 make clean => It will remove all files created by the Makefile
@@ -36,7 +36,7 @@ Cliquez sur les boutons ou utilisez les raccourcis clavier :
 Comment utiliser Makefile :
 
 make yes => Il compile le programme avec la prise en charge du sélecteur de fichiers.
-make/make no => Il compile le programme sans la prise en charge du sélecteur de fichiers.
+make all/no => Il compile le programme sans la prise en charge du sélecteur de fichiers.
 ./ui_app => Il exécute le programme.
 ./ui_app test.png => Il exécute le programme avec test.png comme entrée.
 make clean => Il supprime tous les fichiers créés par Makefile.
